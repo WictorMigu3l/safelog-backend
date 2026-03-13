@@ -1,41 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const pool = new Pool({ host: process.env.DB_HOST, port: process.env.DB_PORT, database: process.env.DB_NAME, user: process.env.DB_USER, password: process.env.DB_PASSWORD, ssl: { rejectUnauthorized: false } });
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: { rejectUnauthorized: false }
-});
-
-// GET /api/eventos
 router.get('/', async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      'SELECT * FROM eventos ORDER BY timestamp DESC LIMIT 100'
-    );
+    const { rows } = await pool.query('SELECT * FROM eventos ORDER BY timestamp DESC LIMIT 100');
     res.json(rows);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-// GET /api/eventos/stats
 router.get('/stats', async (req, res) => {
   try {
     const total = await pool.query('SELECT COUNT(*) FROM eventos');
     const criticos = await pool.query("SELECT COUNT(*) FROM eventos WHERE gravidade IN ('critical','high')");
     const porSetor = await pool.query('SELECT setor, COUNT(*) as total FROM eventos GROUP BY setor ORDER BY total DESC LIMIT 10');
     const porTipo = await pool.query('SELECT tipo, COUNT(*) as total FROM eventos GROUP BY tipo ORDER BY total DESC');
-    res.json({
-      total: parseInt(total.rows[0].count),
-      criticos: parseInt(criticos.rows[0].count),
-      por_setor: porSetor.rows,
-      por_tipo: porTipo.rows
-    });
+    res.json({ total: parseInt(total.rows[0].count), criticos: parseInt(criticos.rows[0].count), por_setor: porSetor.rows, por_tipo: porTipo.rows });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
